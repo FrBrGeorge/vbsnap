@@ -1,0 +1,58 @@
+#!/bin/sh
+case $TERM in
+  *xterm*)
+    _XTERM_Title() { /bin/echo -en "\e]0;$1\a"; } ;;
+  *)
+    _XTERM_Title() { true; } ;;
+esac
+
+Telnet() {
+        socat -,cfmakeraw,echo=0,escape=15 TCP4:localhost:$1
+}
+
+VBoxManage() {
+  if [ "$1" = "-x" ]; then
+    shift
+    /bin/echo "# VBoxManage $*" >&2
+  fi
+  LC_ALL=en_US.UTF-8 /usr/bin/VBoxManage "$@"
+}
+
+VBoxList() { # [class]
+  VBoxManage list ${1:-runningvms} --long | sed -En "
+        /^Name:/{s/[^:]*:[[:space:]]*(.*)/\1/;h}
+        /^UART [0-9]:.*tcp.*server/{s/.*'([^']*)'.*/\1/;G;s/\n/ /;p}
+"
+}
+
+Machine="$1"
+if [ "$Machine" = "STOP!" ]; then
+  VBoxList | { while read Port Name; do
+    VBoxManage -x controlvm "$Name" acpipowerbutton
+  done }
+  exit 0
+fi
+
+if [ -z "$(VBoxList)$1" -o "$Machine" = "-" ]; then
+  /bin/echo -e "\tAll VMs:"
+  VBoxList vms
+else
+  VBoxList | {
+    while read Port Name; do
+        case "$Machine" in
+          "") /bin/echo "$Name: $Port" ;;
+          "$Name"|"$Port")  # tabbed bug — need to do it thrice ((
+            _XTERM_Title "::: $Name"
+            _XTERM_Title ":: $Name"
+            _XTERM_Title ": $Name"
+            Telnet $Port < /dev/tty
+            exit 0
+            ;;
+          *) ;;
+        esac
+    done
+    test "$#" = 1 && VBoxManage -x startvm "$Machine" --type headless && 
+      sleep 1 &&
+      vbconnect "$Machine" final
+  }
+fi

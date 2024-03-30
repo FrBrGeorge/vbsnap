@@ -1,0 +1,17 @@
+#!/bin/sh
+## VBoxManage list intnets
+VBoxManage() {
+  LC_ALL=en_US.UTF-8 /usr/bin/VBoxManage "$@"
+}
+
+VBoxManage list -l "${1:-runningvms}" | sed -En "
+/^Name:/s/Name:[[:space:]]+//p
+/^NIC.*Attachment: Internal Network .* Cable connected: on/s/NIC ([[:digit:]]+).*Internal Network '([^']+)'.*/\1 \2/p
+" | while read id name; do
+  case "$id/$name" in
+    [0-9]*/*[a-z]*) /bin/echo -e "\teth$((id-1)): $name";;
+    */) /bin/echo "$id:" ;;
+    *) /bin/echo "??? $id/ $name";;
+  esac
+done
+# Attachment: Internal Network 'isolated', Cable connected: on

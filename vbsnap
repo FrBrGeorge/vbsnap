@@ -1,0 +1,82 @@
+#!/bin/sh -Efu
+VBoxManage() {
+  if [ "$1" = "-x" ]; then
+    shift
+    /bin/echo "# VBoxManage $*" >&2
+  fi
+  LC_ALL=en_US.UTF-8 /usr/bin/VBoxManage "$@" || exit 1
+}
+
+VBSnap=vbsnap
+
+Usage="`basename $0` base [clone [port] [intnet2 intnet3 intnet4]]
+        or
+`basename $0` image.ova"
+
+die() { # Message [command]
+  /bin/echo "$1" >&2
+  test -z "$2" || eval $2 >&2
+  /bin/echo -e "\nUsage:\n$Usage" >&2
+  exit 1
+}
+
+test $# = 0 && die "No VM specified" "VBoxManage list vms"
+case "$1" in
+  *.ov?) test $# = 1 && die "Importing VM $1" "VBoxManage import '$1'" ;;
+esac
+Base="$1"
+Group="`VBoxManage showvminfo "$Base" | sed -En 's/^Groups:[[:space:]]+([^,[:space:]]+).*/\1/p'`"
+BDate="`VBoxManage showvminfo "$Base" | sed -En 's/^State:.* ([[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}).*/\1/p'`"
+ReGRoup="Groups:[[:space:]]+$Group(,|$)"
+ReUART="^UART.*attached to tcp.*'([[:digit:]]+)'.*"
+ReName="^Name:[[:space:]]*"
+test -z "$Base" -o -z "$Group" && die "Unknown VM «$Base»" "VBoxManage list vms"
+# NGroup=`VBoxManage list -l vms | grep -E "$ReGRoup" | wc -l`
+MaxPort=$(VBoxManage list -l vms | sed -En "\@$ReGRoup@,/^$/{s/$ReUART/\1/p}" | sort -n | tail -1)
+shift
+Port=$((1+MaxPort))
+
+test $# = 0 && {
+  /bin/echo "Clones in group '$Group' ($Base: $BDate):"
+  VBoxManage list -l vms | sed -En "/^Name/h;\#$ReGRoup#{x;s/$ReName//p}"
+  /bin/echo -e "\nFree port: $Port"
+  /bin/echo -e "\nUsage:\n$Usage" >&2
+  exit 1
+}
+Name="$1"
+shift
+
+if [ "$Name" = "ERASE!" ]; then
+  VBoxManage list -l vms | sed -En "/^$ReName/h;\#$ReGRoup#{x;/$Base/!s/$ReName//p}" |
+    while read Par; do 
+      VBoxManage -x unregistervm --delete "$Par"
+    done
+    VBoxManage -x snapshot "$Base" delete "$VBSnap"
+  exit 0
+fi
+
+Nets=""
+SKU="port$Port"
+NNet=2
+for Par; do
+  case "$Par" in
+    [a-zA-Z]*) # Net
+      Nets="$Nets --nic$NNet intnet --intnet$NNet $Par --cableconnected$NNet on"
+      NNet=$((NNet+1))
+      SKU="$SKU.$Par"
+      ;;
+    ''|*[^0-9]*) die "Incorrent net name «$Par»" "VBoxManage list intnets" ;;
+    *) # Port
+      Port="$Par" ;;
+  esac
+done
+
+VBoxManage snapshot "$Base" list | grep -q "Name: $VBSnap (UUID:.*" || {
+  VBoxManage -x snapshot "$Base" take "$VBSnap"
+}
+
+HName="`/bin/echo $Name | tr -dc '[:alnum:]'`"
+VBoxManage -x clonevm "$Base" --groups="$Group" --name="$Name" --options=Link --register --snapshot "$VBSnap"
+VBoxManage -x modifyvm "$Name" --uartmode1 tcpserver $Port $Nets
+VBoxManage -x setextradata "$Name" VBoxInternal/Devices/pcbios/0/Config/DmiSystemVendor "$HName"
+VBoxManage -x setextradata "$Name" VBoxInternal/Devices/pcbios/0/Config/DmiSystemSKU "$SKU"
