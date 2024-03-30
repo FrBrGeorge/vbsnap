@@ -1,0 +1,18 @@
+#!/bin/sh
+getsku() {
+        dmidecode -t1 | sed -En '/^[[:space:]]*SKU Number:[[:space:]]*/{s/.*:[[:space:]]*[^[:digit:]]*//;s/[.]/ /gp}'
+}
+
+set `getsku`
+test $# -lt 1 && exit 0
+sysctl net.ipv4.ip_forward=1
+IP3=${1%??}
+IP1=${1#??}
+shift
+I=1
+for n; do
+        N=`echo $n | hexdump -n1 -e '/1 "%d"'`
+        ip link set dev eth$I up
+        ip add add dev eth$I 10.$((IP3-23)).$((N-96)).$IP1/24
+	I=$((I+1))
+done

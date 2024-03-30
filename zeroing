@@ -1,0 +1,21 @@
+#!/bin/sh
+find $HOME \( -name "*~" -o -name "report.*" \) -exec rm {} \;
+rm -rf $HOME/.cache/* o o.*
+sed -i '1,/#.*=== 8< ===/b;d' /root/.bash_history
+sed -i '/10.0.2/d' $HOME/.ssh/known_hosts
+remove-old-kernels -y
+apt-get clean
+rm -f /var/cache/apt/*.bin /var/lib/dhcpcd/*
+rm -f /var/lib/apt/lists/*pkglist*
+find /var/log -type f | while read F; do cat /dev/null > $F; done
+systemctl restart systemd-journal-flush.service
+systemctl stop systemd-journald
+rm -rf /var/log/journal/* || :
+systemctl restart systemd-journald
+dd if=/dev/zero of=/ZEROING bs=1M status=progress ||:
+rm -f /ZEROING
+cat /dev/null > /etc/resolv.conf
+cat /dev/null > /etc/machine-id
+rm -f /var/lib/dbus/machine-id
+ln -s /etc/machine-id /var/lib/dbus/machine-id
+

@@ -1,0 +1,41 @@
+#!/bin/sh -e
+
+rmall() {
+	trap - EXIT
+	rm -rf $BASE
+}
+
+soecho() {
+	tput smso
+	echo -e "$@"
+	tput rmso
+}
+
+BASE=$HOME/.REPORT
+rm -rf $BASE && mkdir -p $BASE
+trap rmall EXIT HUP INT QUIT PIPE TERM
+
+case "$#" in
+	0) echo "	Usage:
+$0 task-number hostname
+	or
+$0 report-file" >&2
+	   exit 0 ;;
+	1) test -r "$1" 
+	   tar -x -f "$1" -C $BASE
+	   soecho "Replay $1"
+	   scriptreplay -m 1 -I $BASE/IN.txt -O $BASE/OUT.txt -T $BASE/TIME.txt
+	   soecho "Replay $1 finished"
+	   ;;
+	*) N=`printf %02d $1`
+	   H="${2:-`hostname`}"
+	   REPNAME="report.$N.$H"
+	   reset
+	   export PS1="[\u@$N-$H \W]# "
+	   soecho "Report is started. Task: $N; host: $H.\nUse exit or ^D to finish."
+	   lscpu > $BASE/CPU.txt
+	   script -q -I $BASE/IN.txt -O $BASE/OUT.txt -B $BASE/BOTH.txt -T $BASE/TIME.txt
+	   tar -C $BASE -czf "$REPNAME" .
+	   soecho "Report is stopped."
+	   ;;
+esac
