@@ -19,10 +19,10 @@ case "$H:$W" in
 esac
 
 # Try to guess if background color is black (xterm-only)
-Query '\e]11;?\e\\' RGB
+Query '\e]11;?\a' RGB
 # Try go guess if colors are supported at all (urxvt)
 if [ -z "$RGB" ]; then
-	Query '\e]4;7;?\e\\' RGB
+	Query '\e]4;7;?\a' RGB
 	test -z "$RGB" || export TERM=rxvt-unicode-256color
 else
 	export TERM=xterm-256color

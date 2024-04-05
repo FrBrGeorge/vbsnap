@@ -25,6 +25,6 @@ Query() { # ESC-sequence variable
 	STTY=`stty -g`
 	stty raw -echo
 	echo -en "$1"
-	eval "$2='`timeout --foreground 0.1 dd bs=1 iflag=dsync oflag=dsync`'"
+	eval read -t 1 -d ${1:0-1} $2
 	stty $STTY
 }
