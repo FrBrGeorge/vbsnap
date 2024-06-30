@@ -14,9 +14,9 @@ alias d='ls'
 alias s='cd ..'
 alias p='cd -'
 alias vi="vim"
-unlias rm 2> /dev/null
-unlias cp 2> /dev/null
-unlias mv 2> /dev/null
+unalias rm 2> /dev/null
+unalias cp 2> /dev/null
+unalias mv 2> /dev/null
 # GNU Screen support
 test -n "$STY" && PS1="[$WINDOW]$PS1"
 
