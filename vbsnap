@@ -55,6 +55,12 @@ if [ "$Name" = "ERASE!" ]; then
   exit 0
 fi
 
+VBoxManage snapshot "$Base" list | grep -q "Name: $VBSnap (UUID:.*" || {
+  VBoxManage -x snapshot "$Base" take "$VBSnap"
+}
+
+test "$Name" = "ONLY!" && exit 0
+
 Nets=""
 SKU="port$Port"
 NNet=2
@@ -70,10 +76,6 @@ for Par; do
       Port="$Par" ;;
   esac
 done
-
-VBoxManage snapshot "$Base" list | grep -q "Name: $VBSnap (UUID:.*" || {
-  VBoxManage -x snapshot "$Base" take "$VBSnap"
-}
 
 HName="`/bin/echo $Name | tr -dc '[:alnum:]'`"
 VBoxManage -x clonevm "$Base" --groups="$Group" --name="$Name" --options=Link --register --snapshot "$VBSnap"
