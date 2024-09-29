@@ -15,17 +15,17 @@ Usage="`basename $0` base [clone [port] [intnet2 intnet3 intnet4]]
 	or, to register an existing VM,
 `basename $0` /path/to/VM.vbox"
 
-die() { # Message [command]
+die() { # Message [command [exitstatus]]
   /bin/echo "$1" >&2
   test -z "$2" || eval $2 >&2
-  /bin/echo -e "\nUsage:\n$Usage" >&2
-  exit 1
+  test ${3:-1} -gt 0 && /bin/echo -e "\nUsage:\n$Usage" >&2
+  exit ${3:-1}
 }
 
 test $# = 0 && die "No VM specified" "VBoxManage list vms"
 case "$1" in
-  *.ov?) test $# = 1 && die "Importing VM $1" "VBoxManage -x import '$1'" ;;
-  *.vbox) test $# = 1 && die "Registering VM `basename $1`" "VBoxManage -x registervm '$1'" ;;
+  *.ov?) test $# = 1 && die "Importing VM $1" "VBoxManage -x import '$1'" 0 ;;
+  *.vbox) test $# = 1 && die "Registering VM `basename $1`" "VBoxManage -x registervm '$1'" 0;;
 esac
 Base="$1"
 Group="`VBoxManage showvminfo "$Base" | sed -En 's/^Groups:[[:space:]]+([^,[:space:]]+).*/\1/p'`"
