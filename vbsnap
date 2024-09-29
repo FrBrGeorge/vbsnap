@@ -22,7 +22,7 @@ die() { # Message [command]
 
 test $# = 0 && die "No VM specified" "VBoxManage list vms"
 case "$1" in
-  *.ov?) test $# = 1 && die "Importing VM $1" "VBoxManage import '$1'" ;;
+  *.ov?) test $# = 1 && die "Importing VM $1" "VBoxManage -x import '$1'" ;;
 esac
 Base="$1"
 Group="`VBoxManage showvminfo "$Base" | sed -En 's/^Groups:[[:space:]]+([^,[:space:]]+).*/\1/p'`"
