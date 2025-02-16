@@ -32,7 +32,10 @@ if [ "$Machine" = "STOP!" ]; then
   done }
   exit 0
 fi
-
+if [ "$2" = "KILL!" ]; then
+  VBoxManage -x controlvm "$Machine" poweroff
+  exit 0
+fi
 if [ -z "$(VBoxList)$1" -o "$Machine" = "-" ]; then
   /bin/echo -e "\tAll VMs:"
   VBoxList vms
