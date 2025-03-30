@@ -1,58 +1,16 @@
 #!/bin/sh
-DEFAULT="innotekGmbH"
-setetc() { # hostname
-	sed -i "s/.*/$1/" /etc/hostname
-	hostname "$1"
-}
+DEFAULT="innotek GmbH"
+VENDORFIELD="Hardware Vendor:"
 
-setsysconfig() { # hostname
-	test -r /etc/sysconfig/network && \
-	sed -i "s/HOSTNAME=.*/HOSTNAME=$1/" /etc/sysconfig/network
-}
+HVENDOR=$(hostnamectl | sed -nE "/$VENDORFIELD/s/.*: *//p")
+HCURRENT=$(hostnamectl hostname)
 
-wasboth() { # [verbose]
-	_NH="`test -r /etc/sysconfig/network && sed -En 's/^HOSTNAME=//p' < /etc/sysconfig/network`"
-	_EH="`cat /etc/hostname`"
-	test -n "$1" && echo "$_EH : $_NH" || test "$_EH" = "$_NH"
-}
-
-biosname() {
-	validate "$(dmidecode -t1 | \
-		sed -En 's/^[[:space:]]*Manufacturer:[[:space:]](.*)/\1/p')"
-}
-
-validate() { # string
-	echo "$@" | tr -cd '[:alnum:]' | sed -E 's/^[[:digit:]]*$/default/'
-}
-
-case "$#$1" in
-	"1?")	echo "`wasboth verbose` : `biosname`"
+case "$HVENDOR/$HCURRENT/$#" in
+	*/*/1) hostnamectl hostname "$1"; kill -HUP $PPID
 		;;
-	"2?")	biosname ;;
-	1*)	# Set both manually
-		setetc "`validate $1`"
-		setsysconfig "`validate $1`"
-		kill -HUP $PPID
+	localhost/*|"$DEFAULT"/*|"$HVENDOR/$HVENDOR"/*) # Do not touch
 		;;
-	2b*)	# Set both, do not logout
-		setetc "`validate $2`"
-		setsysconfig "`validate $2`"
-		;;
-	2e*)	# Set /etc manually
-		setetc "`validate $2`"
-		;;
-	2s*)	# Set /etc/sysconfig/network manually
-		setsysconfig "`validate $2`"
-		;;
-	0)	# Try to pick from BIOS if not set manually and not default
-		wasboth || test `biosname` = "$DEFAULT" || setetc `biosname`
-		;;
-	*)	exit 1
+	*/localhost/0) hostnamectl hostname "$HVENDOR"
 		;;
 esac
-
-# Re-generate /etc/macine-id and its' dbus satellite
-# dmidecode | grep UUID | tr -dc '[0-9a-f\n]' > /etc/machine-id
-# cat /etc/machine-id > /var/lib/dbus/machine-id
-# test -r /etc/machine-id || systemd-machine-id-setup --commit
-# dbus-uuidgen --ensure
+	
