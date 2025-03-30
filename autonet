@@ -13,6 +13,6 @@ I=1
 for n; do
         N=`echo $n | hexdump -n1 -e '/1 "%d"'`
         ip link set dev eth$I up
-        ip add add dev eth$I 10.$((IP3-23)).$((N-96)).$IP1/24
+        ip add add dev eth$I 10.$(((N-32)%64)).$((IP3-23)).$IP1/24
 	I=$((I+1))
 done
