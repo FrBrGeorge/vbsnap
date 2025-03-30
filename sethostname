@@ -2,7 +2,7 @@
 DEFAULT="innotek GmbH"
 VENDORFIELD="Hardware Vendor:"
 
-HVENDOR=$(hostnamectl | sed -nE "/$VENDORFIELD/s/.*: *//p")
+HVENDOR=$(cat /sys/class/dmi/id/sys_vendor)
 HCURRENT=$(hostnamectl hostname)
 
 case "$HVENDOR/$HCURRENT/$#" in

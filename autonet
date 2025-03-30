@@ -3,7 +3,7 @@ getsku() {
         dmidecode -t1 | sed -En '/^[[:space:]]*SKU Number:[[:space:]]*/{s/.*:[[:space:]]*[^[:digit:]]*//;s/[.]/ /gp}'
 }
 
-set `getsku`
+set `sed -E 's/^[^[:digit:]]*//;s/[.]/ /g' < /sys/class/dmi/id/product_sku`
 test $# -lt 1 && exit 0
 sysctl net.ipv4.ip_forward=1
 IP3=${1%??}
