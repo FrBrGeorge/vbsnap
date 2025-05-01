@@ -15,19 +15,25 @@ Usage="`basename $0` base [clone [port] [intnet2 intnet3 intnet4]]
 
 die() { # Message [command]
   /bin/echo "$1" >&2
-  test -z "$2" || eval $2 >&2
+  test -z "${2:-}" || eval $2 >&2
   /bin/echo -e "\nUsage:\n$Usage" >&2
   exit 1
 }
 
-test $# = 0 && die "No VM specified" "VBoxManage list vms"
+test $# = 0 && die "No VM specified" "VBoxManage list vms | cat -n"
 case "$1" in
   *.ov?) test $# = 1 && die "Importing VM $1" "VBoxManage -x import '$1'" ;;
+  [0-9]*) # Index instead of name
+    Base="$(VBoxManage list vms | cat -n |
+      sed -nE 's/^[[:space:]]+'"$1"'[[:space:]]+"([^"]+)".*/\1/p')"
+    ;;
+  *) Base="$1";;
 esac
-Base="$1"; shift
+shift
+test "$#" = 0 && die "No $Base clone name specified"
 
 case "$1" in
-  *:*)  # Multiple creation
+  *:*)  # Multiple creation as net1:host1,host2,… net2:host1,host3,…
     Hosts=$( {
       Hosts=" "
       for NetGroup; do
