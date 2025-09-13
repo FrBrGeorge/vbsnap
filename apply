@@ -1,0 +1,20 @@
+#!/usr/bin/python3
+import sys
+import argparse
+import subprocess
+
+parser = argparse.ArgumentParser(description="Repeat shell commands on parameter sequences")
+parser.add_argument("-s", "--separator", default=",", help="Sequence separator")
+parser.add_argument("-q", "--quiet", action="store_true", help="Do not show commands")
+
+# TODO expand substring (like val=[1,2,3] -> val=1 / val=2 / val=3)
+args, command = parser.parse_known_args()
+cmdline = [word.split(args.separator) for word in command]
+lengths = {len(word) for word in cmdline}
+if len(lengths) > 2:
+    raise ValueError(f"All sequences must have equal sizes (found {lengths - {1}})")
+for i in range(max(lengths)):
+    cmd = [word[i] if len(word) > 1 else word[0] for word in cmdline]
+    if not args.quiet:
+        print(" ".join(cmd), file=sys.stderr)
+    subprocess.run(cmd)
