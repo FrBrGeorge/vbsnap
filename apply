@@ -2,19 +2,57 @@
 import sys
 import argparse
 import subprocess
+import re
 
-parser = argparse.ArgumentParser(description="Repeat shell commands on parameter sequences")
+class QueerFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter):
+    pass
+
+
+help_ex = f"""
+Examples:
+
+$ {sys.argv[0]} date "+%[T,D]"
+date +%T
+15:34:28
+date +%D
+09/14/25
+
+$ {sys.argv[0]} -qb «» echo qwe«1,2,3»rty 1a,b,3c
+qwe1rty 1a
+qwe2rty b
+qwe3rty 3c
+"""
+parser = argparse.ArgumentParser(description="Repeat shell commands on parameter sequences",
+                                 formatter_class=QueerFormatter, epilog=help_ex)
 parser.add_argument("-s", "--separator", default=",", help="Sequence separator")
+parser.add_argument("-b", "--braces", default="[]", help="Sequence brace pair")
 parser.add_argument("-q", "--quiet", action="store_true", help="Do not show commands")
+parser.add_argument("command", help="Command to repeat")
+parser.add_argument("argument", nargs="*", help="Command argument patterns")
 
-# TODO expand substring (like val=[1,2,3] -> val=1 / val=2 / val=3)
-args, command = parser.parse_known_args()
-cmdline = [word.split(args.separator) for word in command]
-lengths = {len(word) for word in cmdline}
+args = parser.parse_args()
+braces = re.escape(args.braces[:len(args.braces) // 2]), re.escape(args.braces[len(args.braces) // 2:])
+sep = re.escape(args.separator)
+RESEQB = re.compile(rf"{braces[0]}((?:.+?{sep})+?.+?){braces[1]}")
+RESEQ = re.compile(rf"(?:.+{sep})+.+")
+command = [args.command] + args.argument
+
+def decompose(word):
+    match RESEQB.search(word), RESEQ.match(word):
+        case None, None:
+            return [[word]]
+        case None, _:
+            return [re.split(rf"{sep}", word)]
+        case _, _:
+            return [re.split(rf"{sep}", el) for el in RESEQB.split(word)]
+
+
+pattern = [decompose(word) for word in command]
+lengths = {len(el) for word in pattern for el in word}
 if len(lengths) > 2:
     raise ValueError(f"All sequences must have equal sizes (found {lengths - {1}})")
 for i in range(max(lengths)):
-    cmd = [word[i] if len(word) > 1 else word[0] for word in cmdline]
+    cmd = ["".join(el[i] if len(el) > 1 else el[0] for el in word) for word in pattern]
     if not args.quiet:
         print(" ".join(cmd), file=sys.stderr)
     subprocess.run(cmd)
