@@ -7,7 +7,7 @@ case $TERM in
 esac
 
 Telnet() {
-        socat -,cfmakeraw,echo=0,escape=15 TCP4:localhost:$1
+        socat -,end-close,cfmakeraw,echo=0,escape=15 TCP4:localhost:$1
 }
 
 VBoxManage() {
